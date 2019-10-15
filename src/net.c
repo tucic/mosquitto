@@ -197,6 +197,8 @@ int net__socket_accept(struct mosquitto_db *db, mosq_sock_t listensock)
 		return -1;
 	}
 
+    log__printf(NULL, MOSQ_LOG_INFO, "Client connection from %s, current client count: %d.", new_context->address, new_context->listener->client_count);
+
 #ifdef WITH_TLS
 	/* TLS init */
 	for(i=0; i<db->config->listener_count; i++){
