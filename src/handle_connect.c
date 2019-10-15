@@ -113,13 +113,10 @@ int connect__on_authorised(struct mosquitto_db *db, struct mosquitto *context, v
 	/* Find if this client already has an entry. This must be done *after* any security checks. */
 	HASH_FIND(hh_id, db->contexts_by_id, context->id, strlen(context->id), found_context);
 	if(found_context){
-		/* Found a matching client */
-		if(found_context->sock == INVALID_SOCKET){
-			/* Client is reconnecting after a disconnect */
-			/* FIXME - does anything need to be done here? */
-		}else{
-			/* Client is already connected, disconnect old version. This is
-			 * done in context__cleanup() below. */
+		/* Client is already connected, disconnect old version. This is
+		 * done in context__cleanup() below. */
+		if( found_context->sock != INVALID_SOCKET ) {
+			mosquitto__set_state(found_context, mosq_cs_duplicate);
 			if(db->config->connection_messages == true){
 				log__printf(NULL, MOSQ_LOG_ERR, "Client %s already connected, closing old connection.", context->id);
 			}
@@ -160,14 +157,15 @@ int connect__on_authorised(struct mosquitto_db *db, struct mosquitto *context, v
 			}
 		}
 
-		session_expiry__remove(found_context);
-		will_delay__remove(found_context);
-		will__clear(found_context);
+		if(found_context->sock != INVALID_SOCKET) {
+			session_expiry__remove(found_context);
+			will_delay__remove(found_context);
+			will__clear(found_context);
 
-		found_context->clean_start = true;
-		found_context->session_expiry_interval = 0;
-		mosquitto__set_state(found_context, mosq_cs_duplicate);
-		do_disconnect(db, found_context, MOSQ_ERR_SUCCESS);
+			found_context->clean_start = true;
+			found_context->session_expiry_interval = 0;
+			do_disconnect(db, found_context, MOSQ_ERR_SUCCESS);
+		}
 	}
 
 	rc = acl__find_acls(db, context);

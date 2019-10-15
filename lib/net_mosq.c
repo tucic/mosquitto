@@ -211,6 +211,11 @@ int net__socket_close(struct mosquitto *mosq)
 	{
 		if(mosq->state != mosq_cs_disconnecting){
 			mosquitto__set_state(mosq, mosq_cs_disconnect_ws);
+#ifdef WITH_BROKER
+			if(mosq->listener){
+				mosq->listener->client_count--;
+			}
+#endif
 		}
 		libwebsocket_callback_on_writable(mosq->ws_context, mosq->wsi);
 	}else
@@ -222,14 +227,15 @@ int net__socket_close(struct mosquitto *mosq)
 #endif
 			rc = COMPAT_CLOSE(mosq->sock);
 			mosq->sock = INVALID_SOCKET;
+#ifdef WITH_BROKER
+			if(mosq->listener){
+				mosq->listener->client_count--;
+			}
+#endif
+		} else {
+			mosq->sock = INVALID_SOCKET;
 		}
 	}
-
-#ifdef WITH_BROKER
-	if(mosq->listener){
-		mosq->listener->client_count--;
-	}
-#endif
 
 	return rc;
 }
